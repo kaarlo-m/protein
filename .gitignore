@@ -1,1 +1,5 @@
 /.venv
+/data
+/frames
+/output
+/.ipynb_checkpoints

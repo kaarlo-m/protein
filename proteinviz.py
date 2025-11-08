@@ -17,5 +17,4 @@ ag.positions
 for ts in u.trajectory:
     print(ag.center_of_mass())
 
-view=nv.show_mdanalysis(ag)
-view
+nv.show_mdanalysis(ag)
