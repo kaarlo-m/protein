@@ -19,6 +19,7 @@ with pymol2.PyMOL() as pm:
 
 
     # load topology and trajectory
+
     cmd.load(TOPO, "prot")
     cmd.load_traj(TRAJ, "prot", state=1, interval=1, average=0)
 
