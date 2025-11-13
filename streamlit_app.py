@@ -1,52 +1,36 @@
-# This is app is created by Chanin Nantasenamat (Data Professor) https://youtube.com/dataprofessor
-# Credit: This app is inspired by https://huggingface.co/spaces/osanseviero/esmfold
-
 import streamlit as st
 from stmol import showmol
 import py3Dmol
-import requests
-import biotite.structure.io as bsio
+import MDAnalysis as mda
 
-#st.set_page_config(layout = 'wide')
-st.sidebar.title('🎈 ESMFold')
-st.sidebar.write('[*ESMFold*](https://esmatlas.com/about) is an end-to-end single sequence protein structure predictor based on the ESM-2 language model. For more information, read the [research article](https://www.biorxiv.org/content/10.1101/2022.07.20.500902v2) and the [news article](https://www.nature.com/articles/d41586-022-03539-1) published in *Nature*.')
-pdb="C:/Users/Kaarlo/protein/data/16pk_A_analysis/16pk_A.pdb"
-xtc="C:/Users/Kaarlo/protein/data/16pk_A_analysis/16pk_A_R1.xtc"
-# stmol
-def render_mol(pdb, xtc):
-    pdbview = py3Dmol.view()
-    pdbview.addModel(pdb,'pdb')
-    pdbview.addTraj(xtc, 'xtc')
-    pdbview.setStyle({'cartoon':{'color':'spectrum'}})
-    pdbview.setBackgroundColor('white')#('0xeeeeee')
-    pdbview.zoomTo()
-    pdbview.zoom(2, 800)
-    pdbview.spin(True)
-    showmol(pdbview, height = 500,width=800)
+pdb_path = "C:/Users/Kaarlo/protein/data/16pk_A_analysis/16pk_A.pdb"
+xtc_path = "C:/Users/Kaarlo/protein/data/16pk_A_analysis/16pk_A_R1.xtc"  # not used directly by py3Dmol
+u=mda.Universe(pdb_path, xtc_path)
+ag=u.select_atoms("protein")
+with mda.Writer("trajectory_multimodel.pdb", ag.n_atoms) as W:
+    for ts in u.trajectory[::10]:  # stride frames to reduce file size
+        W.write(ag)
+pdb_str = open("trajectory_multimodel.pdb").read()
 
-# Protein sequence input
-DEFAULT_SEQ = "MGSSHHHHHHSSGLVPRGSHMRGPNPTAASLEASAGPFTVRSFTVSRPSGYGAGTVYYPTNAGGTVGAIAIVPGYTARQSSIKWWGPRLASHGFVVITIDTNSTLDQPSSRSSQQMAALRQVASLNGTSSSPIYGKVDTARMGVMGWSMGGGGSLISAANNPSLKAAAPQAPWDSSTNFSSVTVPTLIFACENDSIAPVNSSALPIYDSMSRNAKQFLEINGGSHSCANSGNSNQALIGKKGVAWMKRFMDNDTRYSTFACENPNSTRVSDFRTANCSLEDPAANKARKEAELAAATAEQ"
-txt = st.sidebar.text_area('Input sequence', DEFAULT_SEQ, height=275)
+def render_mol(pdb_file):
+    view = py3Dmol.view(width=500, height=500)
+    view.addModelsAsFrames(pdb_str, "pdb")
+    view.setStyle({"cartoon": {"color": "spectrum"}})
+    view.animate({"interval": 75})
+    view.setBackgroundColor('black')
+    view.zoomTo()
+    view.spin(True)
+    #view.show()
+    showmol(view, height=500, width=500)
+    
 
-# ESMfold
-def update(sequence=txt):
-    headers = {
-        'Content-Type': 'application/x-www-form-urlencoded',
-    }
-    response = requests.post('https://api.esmatlas.com/foldSequence/v1/pdb/', headers=headers, data=sequence)
-    name = sequence[:3] + sequence[-3:]
-    pdb_string = response.content.decode('utf-8')
-
-    with open('predicted.pdb', 'w') as f:
-        f.write(pdb_string)
-
-    struct = bsio.load_structure('predicted.pdb', extra_fields=["b_factor"])
-    b_value = round(struct.b_factor.mean(), 4)
-
-    # Display protein structure
-    st.subheader('Visualization of predicted protein structure')
-    render_mol(pdb, xtc)
+def set_show_flag():
+    st.session_state["show_mol"] = True
 
 
 
-
+_ = st.sidebar.text_area('Show the protein')
+st.sidebar.button('Show', on_click=set_show_flag)
+st.header("PHOSPHOGLYCERATE KINASE, GLYCOSOMAL")
+if st.session_state.get("show_mol", False):
+    render_mol(pdb_path)
