@@ -1,6 +1,5 @@
 streamlit
 stmol==0.0.9
-py3Dmol
-biotite
+py3Dmol==2.0.0.post2
 ipywidgets
 ipython_genutils
