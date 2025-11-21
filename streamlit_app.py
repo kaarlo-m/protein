@@ -1,16 +1,17 @@
 from pathlib import Path
 
+import csv
 import py3Dmol
 import streamlit as st
 import streamlit.components.v1 as components
 
 DATA_DIR = Path("data")
-VIEW_WIDTH = 500
-VIEW_HEIGHT = 500
+ATLAS_INFO_PATH = Path("ATLAS_info.tsv")
+VIEW_WIDTH = 1000
+VIEW_HEIGHT = 1000
 
 st.set_page_config(
-    page_title="Phosphoglycerate Kinase Viewer",
-    layout="wide",
+    layout="wide"
 )
 
 
@@ -25,6 +26,29 @@ def discover_multimodel_files(base_dir: Path = DATA_DIR) -> list[Path]:
 def load_multimodel_pdb(pdb_path: str) -> str:
     """Read and cache the contents of a multi-model PDB file."""
     return Path(pdb_path).read_text()
+
+
+@st.cache_data(show_spinner=False)
+def load_atlas_metadata(tsv_path: Path = ATLAS_INFO_PATH) -> dict[str, dict[str, str]]:
+    """Parse ATLAS_info.tsv for quick protein lookups by PDB id."""
+    if not tsv_path.exists():
+        return {}
+
+    records: dict[str, dict[str, str]] = {}
+    with tsv_path.open(encoding="utf-8") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        for row in reader:
+            pdb_id = row.get("PDB", "").strip()
+            if not pdb_id:
+                continue
+            records[pdb_id] = {
+                "name": pdb_id,
+                "title": row.get("protein_name", "").strip(),
+                "organism": row.get("organism", "").strip(),
+                "sequence": row.get("sequence", "").strip(),
+                "uniprot" : row.get("UniProt_entry", "").strip(),
+            }
+    return records
 
 
 def render_mol(pdb_data: str) -> None:
@@ -44,7 +68,7 @@ def render_mol(pdb_data: str) -> None:
             background-color: transparent;
         }}
         .viewer-frame {{
-            border: 2px solid #4caf50;
+            border: 2px solid #fbff00ff;
             border-radius: 12px;
             padding: 12px;
             background-color: #050505;
@@ -72,13 +96,23 @@ def move_queue(step: int) -> None:
     st.session_state["queue_index"] = (st.session_state.get("queue_index", 0) + step) % total
 
 
-st.header("PHOSPHOGLYCERATE KINASE, GLYCOSOMAL")
-st.write(
-    "Queue up the generated multi-model trajectories below and animate them directly in the viewer."
-)
+def extract_pdb_id(model_path: Path) -> str:
+    """Derive the PDB id (e.g. 16pk_A) from a multi-model filename."""
+    stem = model_path.stem
+    suffix = "_multimodel"
+    if stem.endswith(suffix):
+        stem = stem[: -len(suffix)]
+    parts = stem.split("_")
+    if len(parts) >= 2:
+        return "_".join(parts[:2])
+    return stem
+
+
+
 
 multimodel_files = discover_multimodel_files()
 total_models = len(multimodel_files)
+atlas_metadata = load_atlas_metadata()
 
 if "queue_index" not in st.session_state:
     st.session_state["queue_index"] = 0
@@ -89,38 +123,52 @@ else:
     st.session_state["queue_len"] = total_models
     st.session_state["queue_index"] = min(st.session_state["queue_index"], total_models - 1)
 
-    st.button("Start Queue", on_click=set_show_flag)
+    set_show_flag()
 
     if st.session_state.get("show_mol", False):
-        controls = st.columns(3)
         disable_navigation = total_models <= 1
-        controls[0].button(
-            "Previous Model",
-            on_click=move_queue,
-            args=(-1,),
-            disabled=disable_navigation,
-        )
-        controls[2].button(
-            "Next Model",
-            on_click=move_queue,
-            args=(1,),
-            disabled=disable_navigation,
-        )
-
         current_index = st.session_state.get("queue_index", 0)
         current_file = multimodel_files[current_index]
         current_label = current_file.relative_to(DATA_DIR).as_posix()
-
-        st.subheader("Now Playing")
-        st.write(f"**{current_label}** ({current_index + 1} of {total_models})")
-        st.progress((current_index + 1) / total_models)
+        pdb_id = extract_pdb_id(current_file)
+        protein_info = atlas_metadata.get(pdb_id)
 
         with st.spinner("Loading multi-model trajectory..."):
             pdb_string = load_multimodel_pdb(str(current_file))
-        render_mol(pdb_string)
 
-        with st.expander("Queued trajectories", expanded=False):
-            for idx, model_path in enumerate(multimodel_files):
-                marker = ">>" if idx == current_index else "--"
-                rel_path = model_path.relative_to(DATA_DIR).as_posix()
-                st.write(f"{marker} {rel_path}")
+        viewer_col, info_col = st.columns([3, 2], gap="large")
+        with viewer_col:
+            render_mol(pdb_string)
+
+        with info_col:
+            st.subheader("Protein Details")
+            if protein_info:
+                st.write(f"**TITLE:** {protein_info['title'] or 'N/A'}")
+                st.write(f"**UNIPROT ID:** {protein_info['uniprot'] or 'N/A'}")
+                st.write(f"**ORGANISM:** {protein_info['organism'] or 'N/A'}")
+                with st.expander("SEQUENCE", expanded=False):
+                    st.text(protein_info["sequence"] or "No sequence found.")
+            else:
+                st.info("No ATLAS metadata found for this protein.")
+
+            with st.expander("Queued trajectories", expanded=False):
+                for idx, model_path in enumerate(multimodel_files):
+                    marker = ">>" if idx == current_index else "--"
+                    rel_path = model_path.relative_to(DATA_DIR).as_posix()
+                    pdb_id = extract_pdb_id(model_path)
+                    protein_info = atlas_metadata.get(pdb_id)
+                    st.write(f"{marker} {protein_info['uniprot']}")
+
+            nav_cols = st.columns(3)
+            nav_cols[0].button(
+                "Previous Model",
+                on_click=move_queue,
+                args=(-1,),
+                disabled=disable_navigation,
+            )
+            nav_cols[2].button(
+                "Next Model",
+                on_click=move_queue,
+                args=(1,),
+                disabled=disable_navigation,
+            )
