@@ -43,14 +43,22 @@ def process_analysis_dir(analysis_dir: Path, stride: int) -> List[Path]:
     trajectories = sorted(analysis_dir.glob("*.xtc"))
     created_files = []
 
-    for trajectory in trajectories:
-        print(f"[INFO] Writing multi-model PDB for {trajectory}")
-        output = write_multimodel(structure, trajectory, stride)
-        created_files.append(output)
-        print(f"[OK]   Saved to {output}")
-
-    if not created_files:
+    if not trajectories:
         print(f"[WARN] No trajectories found in {analysis_dir}")
+        return created_files
+
+    # Prefer the R1 trajectory if present; otherwise fall back to the first available.
+    first_traj = next((t for t in trajectories if "_R1" in t.stem), trajectories[0])
+    output_path = first_traj.with_name(f"{first_traj.stem}_multimodel.pdb")
+
+    if output_path.exists():
+        print(f"[SKIP] Multi-model already exists: {output_path}")
+        return created_files
+
+    print(f"[INFO] Writing multi-model PDB for {first_traj}")
+    output = write_multimodel(structure, first_traj, stride)
+    created_files.append(output)
+    print(f"[OK]   Saved to {output}")
 
     return created_files
 

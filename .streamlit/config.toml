@@ -6,3 +6,7 @@ textColor="#fbff00ff"
 font="monospace"
 headingFont="monospace"
 runOnSave = true
+
+
+[ui]
+hideTopBar = true
