@@ -1,10 +1,15 @@
 "PDB","length","organism","protein_name","UniProt_entry"
 "3mx7_A","90","H. sapiens","Fas apoptotic inhibitory molecule 1","FAIM1_HUMAN"
+"2nwv_A","114","T. variabilis","XisI protein-like protein","Q3M7V9_TRIV2"
 "3frr_A","191","H. sapiens","IST1 homolog","IST1_HUMAN"
+"2y3w_A","182","D. rerio","Spindle assembly abnormal protein 6 homolog","SAS6_DANRE"
 "3lui_B","115","H. sapiens","Sorting nexin-17","SNX17_HUMAN"
+"1v4p_C","157","P. horikoshii","Alanyl-tRNA editing protein AlaX-S","ALAXS_PYRHO"
 "6l34_A","68","H. sapiens","FACT complex subunit SSRP1","SSRP1_HUMAN"
 "1fs1_C","53","H. sapiens","S-phase kinase-associated protein 2","SKP2_HUMAN"
 "1l2w_I","69","Y. pseudotuberculosis serotype I","Outer membrane virulence protein YopE","YOPE_YERPS"
 "6mi3_B","124","H. sapiens","NF-kappa-B essential modulator","NEMO_HUMAN"
-"4ojl_C","776","E. phage Cba120","Tailspike protein","G3M189_9CAUD"
 "5exh_C","47","M. musculus","Methylcytosine dioxygenase TET3","TET3_MOUSE"
+
+
+
