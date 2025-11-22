@@ -96,6 +96,12 @@ def move_queue(step: int) -> None:
     st.session_state["queue_index"] = (st.session_state.get("queue_index", 0) + step) % total
 
 
+def select_queue(idx: int) -> None:
+    """Jump directly to a queued trajectory."""
+    st.session_state["queue_index"] = idx
+    st.session_state["show_mol"] = True
+
+
 def extract_pdb_id(model_path: Path) -> str:
     """Derive the PDB id (e.g. 16pk_A) from a multi-model filename."""
     stem = model_path.stem
@@ -141,7 +147,6 @@ else:
             render_mol(pdb_string)
 
         with info_col:
-            st.subheader("Protein Details")
             if protein_info:
                 st.write(f"**TITLE:** {protein_info['title'] or 'N/A'}")
                 st.write(f"**UNIPROT ID:** {protein_info['uniprot'] or 'N/A'}")
@@ -151,13 +156,29 @@ else:
             else:
                 st.info("No ATLAS metadata found for this protein.")
 
-            with st.expander("Queued trajectories", expanded=False):
+            with st.container():
+                st.subheader("AVAILABLE PROTEINS:")
+                queue_labels: list[str] = []
+                queue_index_map: dict[str, int] = {}
                 for idx, model_path in enumerate(multimodel_files):
-                    marker = ">>" if idx == current_index else "--"
-                    rel_path = model_path.relative_to(DATA_DIR).as_posix()
                     pdb_id = extract_pdb_id(model_path)
-                    protein_info = atlas_metadata.get(pdb_id)
-                    st.write(f"{marker} {protein_info['uniprot']}")
+                    info = atlas_metadata.get(pdb_id, {})
+                    label = info.get("uniprot") or pdb_id
+                    title=info.get("title")
+                    option_label = f"{idx + 1}. {label} ({title})"
+                    queue_labels.append(option_label)
+                    queue_index_map[option_label] = idx
+
+                selected_label = st.radio(
+                    "Select a trajectory",
+                    queue_labels,
+                    index=current_index,
+                    key="queue_selector",
+                )
+                selected_idx = queue_index_map.get(selected_label, current_index)
+                if selected_idx != current_index:
+                    select_queue(selected_idx)
+                    #st.experimental_rerun()
 
             nav_cols = st.columns(3)
             nav_cols[0].button(
