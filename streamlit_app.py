@@ -5,8 +5,9 @@ import py3Dmol
 import streamlit as st
 import streamlit.components.v1 as components
 
-DATA_DIR = Path("data")
-ATLAS_INFO_PATH = Path("ATLAS_info.tsv")
+APP_DIR = Path(__file__).resolve().parent
+DATA_DIR = APP_DIR / "data"
+ATLAS_INFO_PATH = APP_DIR / "ATLAS_info.tsv"
 VIEW_WIDTH = 1000
 VIEW_HEIGHT = 1000
 
